@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оскар - Черный котик</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .stat-bar {
+            height: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .stat-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+        
+        .hunger-fill { background: #FF6B6B; }
+        .energy-fill { background: #4ECDC4; }
+        .mood-fill { background: #FFD166; }
+        .lives-fill { background: #06D6A0; }
+        
+        .oscar-container {
+            position: relative;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #oscar {
+            width: 200px;
+            height: 200px;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        #oscar:hover {
+            transform: scale(1.05);
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        button {
+            padding: 20px;
+            border: none;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .feed-btn { background: linear-gradient(135deg, #FF6B6B, #FF8E8E); }
+        .play-btn { background: linear-gradient(135deg, #4ECDC4, #6AE0D8); }
+        .sleep-btn { background: linear-gradient(135deg, #764BA2, #9B6BD2); }
+        .message-btn { background: linear-gradient(135deg, #FFD166, #FFE08E); }
+        
+        .message-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .modal-content h3 {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .modal-content input,
+        .modal-content textarea {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            font-size: 1em;
+        }
+        
+        .modal-content textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .modal-actions button {
+            flex: 1;
+        }
+        
+        .close-modal {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .send-message {
+            background: #06D6A0;
+        }
+        
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            display: none;
+            z-index: 1001;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        @keyframes laser {
+            0% { transform: translateX(-100px) translateY(-100px); }
+            100% { transform: translateX(100px) translateY(100px); }
+        }
+        
+        .blink {
+            animation: blink 2s infinite;
+        }
+        
+        .float {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .laser {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background: red;
+            border-radius: 50%;
+            box-shadow: 0 0 10px red, 0 0 20px red;
+            display: none;
+        }
+        
+        .eye {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 80px;
+            transition: all 0.5s ease;
+        }
+        
+        .eye-left { left: 70px; }
+        .eye-right { left: 110px; }
+        
+        .pupil {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: black;
+            border-radius: 50%;
+            top: 5px;
+            left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐱 Оскар</h1>
+            <p>Черный котик-тамагочи</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div>🍗 Голод</div>
+                <div class="stat-value" id="hunger-value">100</div>
+                <div class="stat-bar">
+                    <div class="stat-fill hunger-fill" id="hunger-bar"></div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div>⚡ Энергия</div>
+                <div class="stat-value" id="energy-value">100</div>
+                <div class="stat-bar">
+                    <div class="stat-fill energy-fill" id="energy-bar"></div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div>😺 Настроение</div>
+                <div class="stat-value" id="mood-value">100</div>
+                <div class="stat-bar">
+                    <div class="stat-fill mood-fill" id="mood-bar"></div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div>🏥 Жизни</div>
+                <div class="stat-value" id="lives-value">24/24</div>
+                <div class="stat-bar">
+                    <div class="stat-fill lives-fill" id="lives-bar"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="oscar-container">
+            <div id="oscar">
+                <!-- Тело кота -->
+                <div style="
+                    position: absolute;
+                    width: 180px;
+                    height: 120px;
+                    background: black;
+                    border-radius: 50% 50% 40% 40%;
+                    top: 40px;
+                    left: 10px;
+                "></div>
+                
+                <!-- Уши -->
+                <div style="
+                    position: absolute;
+                    width: 0;
+                    height: 0;
+                    border-left: 20px solid transparent;
+                    border-right: 20px solid transparent;
+                    border-bottom: 30px solid black;
+                    top: 30px;
+                    left: 60px;
+                    transform: rotate(-20deg);
+                "></div>
+                <div style="
+                    position: absolute;
+                    width: 0;
+                    height: 0;
+                    border-left: 20px solid transparent;
+                    border-right: 20px solid transparent;
+                    border-bottom: 30px solid black;
+                    top: 30px;
+                    left: 100px;
+                    transform: rotate(20deg);
+                "></div>
+                
+                <!-- Глаза -->
+                <div class="eye eye-left">
+                    <div class="pupil" id="pupil-left"></div>
+                </div>
+                <div class="eye eye-right">
+                    <div class="pupil" id="pupil-right"></div>
+                </div>
+                
+                <!-- Нос -->
+                <div style="
+                    position: absolute;
+                    width: 15px;
+                    height: 10px;
+                    background: pink;
+                    border-radius: 50%;
+                    top: 105px;
+                    left: 92px;
+                    transform: rotate(180deg);
+                "></div>
+                
+                <!-- Усы -->
+                <div style="
+                    position: absolute;
+                    width: 40px;
+                    height: 1px;
+                    background: white;
+                    top: 110px;
+                    left: 50px;
+                    transform: rotate(-20deg);
+                "></div>
+                <div style="
+                    position: absolute;
+                    width: 40px;
+                    height: 1px;
+                    background: white;
+                    top: 110px;
+                    left: 100px;
+                    transform: rotate(20deg);
+                "></div>
+                
+                <!-- Хвост -->
+                <div style="
+                    position: absolute;
+                    width: 60px;
+                    height: 10px;
+                    background: black;
+                    border-radius: 5px;
+                    top: 130px;
+                    left: 150px;
+                    transform: rotate(45deg);
+                "></div>
+            </div>
+            
+            <!-- Лазерная указка (скрыта по умолчанию) -->
+            <div class="laser" id="laser"></div>
+            
+            <!-- Zzz для сна -->
+            <div id="sleep-indicator" style="
+                display: none;
+                position: absolute;
+                font-size: 2em;
+                animation: float 2s ease-in-out infinite;
+            ">Zzz</div>
+        </div>
+        
+        <div class="controls">
+            <button class="feed-btn" onclick="feedOscar()">
+                🍖 Покормить
+            </button>
+            
+            <button class="play-btn" onclick="playWithOscar()">
+                🔴 Играть с лазером
+            </button>
+            
+            <button class="sleep-btn" onclick="toggleSleep()">
+                💤 Уложить спать/Разбудить
+            </button>
+            
+            <button class="message-btn" onclick="showMessageModal()">
+                📩 Отправить сообщение
+            </button>
+        </div>
+    </div>
+    
+    <!-- Модальное окно для сообщений -->
+    <div class="message-modal" id="messageModal">
+        <div class="modal-content">
+            <h3>📨 Отправить сообщение</h3>
+            <input type="text" id="toOwner" placeholder="Имя получателя (например, username)">
+            <textarea id="messageText" placeholder="Ваше сообщение..."></textarea>
+            <div class="modal-actions">
+                <button class="close-modal" onclick="hideMessageModal()">Отмена</button>
+                <button class="send-message" onclick="sendMessage()">Отправить</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Уведомление -->
+    <div class="notification" id="notification"></div>
+    
+    <script>
+        // Telegram Web App
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        // Состояние Оскара
+        let oscarState = {
+            hunger: 100,
+            energy: 100,
+            mood: 100,
+            lives: 24,
+            isSleeping: false
+        };
+        
+        // Анимации
+        let currentAnimation = null;
+        let laserActive = false;
+        
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOscarState();
+            startAnimations();
+        });
+        
+        // Загрузка состояния
+        async function loadOscarState() {
+            try {
+                // В реальном приложении здесь будет запрос к вашему API
+                // const response = await fetch('/api/oscar-state');
+                // oscarState = await response.json();
+                
+                updateUI();
+            } catch (error) {
+                console.error('Ошибка загрузки состояния:', error);
+            }
+        }
+        
+        // Обновление интерфейса
+        function updateUI() {
+            // Обновление значений
+            document.getElementById('hunger-value').textContent = oscarState.hunger;
+            document.getElementById('energy-value').textContent = oscarState.energy;
+            document.getElementById('mood-value').textContent = oscarState.mood;
+            document.getElementById('lives-value').textContent = `${oscarState.lives}/24`;
+            
+            // Обновление полосок прогресса
+            document.getElementById('hunger-bar').style.width = `${oscarState.hunger}%`;
+            document.getElementById('energy-bar').style.width = `${oscarState.energy}%`;
+            document.getElementById('mood-bar').style.width = `${oscarState.mood}%`;
+            document.getElementById('lives-bar').style.width = `${(oscarState.lives / 24) * 100}%`;
+            
+            // Обновление анимаций
+            const oscar = document.getElementById('oscar');
+            const sleepIndicator = document.getElementById('sleep-indicator');
+            
+            if (oscarState.isSleeping) {
+                oscar.classList.add('blink');
+                sleepIndicator.style.display = 'block';
+            } else {
+                oscar.classList.remove('blink');
+                sleepIndicator.style.display = 'none';
+            }
+            
+            // Обновление настроения (цвет глаз)
+            const pupils = document.querySelectorAll('.pupil');
+            if (oscarState.mood > 70) {
+                pupils.forEach(p => p.style.background = '#4ECDC4'); // Голубые (счастлив)
+            } else if (oscarState.mood > 30) {
+                pupils.forEach(p => p.style.background = '#FFD166'); // Желтые (норма)
+            } else {
+                pupils.forEach(p => p.style.background = '#FF6B6B'); // Красные (грустный)
+            }
+        }
+        
+        // Анимации Оскара
+        function startAnimations() {
+            // Случайные движения
+            setInterval(() => {
+                if (!oscarState.isSleeping && !laserActive) {
+                    moveEyesRandomly();
+                }
+            }, 3000);
+            
+            // Периодическое обновление состояния
+            setInterval(loadOscarState, 30000); // Каждые 30 секунд
+        }
+        
+        // Действия
+        async function feedOscar() {
+            showNotification('Оскар кушает... 🍖');
+            
+            // Отправка запроса на бэкенд
+            await sendAction('feed');
+            
+            // Локальное обновление
+            oscarState.hunger = Math.min(100, oscarState.hunger + 20);
+            oscarState.mood = Math.min(100, oscarState.mood + 5);
+            updateUI();
+            
+            // Анимация еды
+            animateEating();
+        }
+        
+        async function playWithOscar() {
+            if (oscarState.isSleeping) {
+                showNotification('Оскар спит! Не мешайте ему! 💤');
+                return;
+            }
+            
+            showNotification('Оскар играет с лазерной указкой! 🔴');
+            
+            // Отправка запроса на бэкенд
+            await sendAction('play');
+            
+            // Локальное обновление
+            oscarState.mood = Math.min(100, oscarState.mood + 15);
+            oscarState.energy = Math.max(0, oscarState.energy - 10);
+            updateUI();
+            
+            // Анимация лазера
+            animateLaser();
+        }
+        
+        async function toggleSleep() {
+            const action = oscarState.isSleeping ? 'wake' : 'sleep';
+            
+            // Отправка запроса на бэкенд
+            await sendAction(action);
+            
+            // Локальное обновление
+            oscarState.isSleeping = !oscarState.isSleeping;
+            
+            if (oscarState.isSleeping) {
+                showNotification('Оскар уснул... 💤');
+                oscarState.energy = Math.min(100, oscarState.energy + 20);
+            } else {
+                showNotification('Оскар проснулся! 🌅');
+            }
+            
+            updateUI();
+        }
+        
+        // Анимации
+        function moveEyesRandomly() {
+            const pupils = document.querySelectorAll('.pupil');
+            const x = Math.random() * 10 - 5;
+            const y = Math.random() * 10 - 5;
+            
+            pupils.forEach(pupil => {
+                pupil.style.transform = `translate(${x}px, ${y}px)`;
+            });
+        }
+        
+        function animateEating() {
+            const oscar = document.getElementById('oscar');
+            oscar.classList.add('float');
+            
+            setTimeout(() => {
+                oscar.classList.remove('float');
+            }, 1000);
+        }
+        
+        function animateLaser() {
+            laserActive = true;
+            const laser = document.getElementById('laser');
+            const pupils = document.querySelectorAll('.pupil');
+            
+            // Показать лазер
+            laser.style.display = 'block';
+            laser.style.left = '0px';
+            laser.style.top = '0px';
+            
+            // Анимация движения лазера
+            let x = 0;
+            let y = 0;
+            let direction = 1;
+            
+            const laserInterval = setInterval(() => {
+                x += 10 * direction;
+                y += 10 * direction;
+                
+                laser.style.left = `${x}px`;
+                laser.style.top = `${y}px`;
+                
+                // Движение глаз за лазером
+                pupils.forEach(pupil => {
+                    const dx = x - 100; // Центр экрана
+                    const dy = y - 100;
+                    const angle = Math.atan2(dy, dx);
+                    const distance = Math.min(10, Math.sqrt(dx*dx + dy*dy) / 20);
+                    
+                    pupil.style.transform = `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance}px)`;
+                });
+                
+                if (x > 200 || x < -100) {
+                    direction *= -1;
+                }
+            }, 50);
+            
+            // Остановка через 3 секунды
+            setTimeout(() => {
+                clearInterval(laserInterval);
+                laser.style.display = 'none';
+                laserActive = false;
+                
+                // Возврат глаз в нормальное положение
+                pupils.forEach(pupil => {
+                    pupil.style.transform = 'translate(0, 0)';
+                });
+            }, 3000);
+        }
+        
+        // Сообщения
+        function showMessageModal() {
+            document.getElementById('messageModal').style.display = 'flex';
+        }
+        
+        function hideMessageModal() {
+            document.getElementById('messageModal').style.display = 'none';
+        }
+        
+        async function sendMessage() {
+            const toOwner = document.getElementById('toOwner').value;
+            const message = document.getElementById('messageText').value;
+            
+            if (!toOwner || !message) {
+                showNotification('Заполните все поля!');
+                return;
+            }
+            
+            // Отправка запроса на бэкенд
+            await sendAction('message', { toOwner, message });
+            
+            showNotification('Сообщение отправлено! 📨');
+            hideMessageModal();
+            
+            // Очистка полей
+            document.getElementById('toOwner').value = '';
+            document.getElementById('messageText').value = '';
+        }
+        
+        // Вспомогательные функции
+        async function sendAction(action, data = {}) {
+            try {
+                // В реальном приложении здесь будет fetch к вашему API
+                // const response = await fetch('/api/action', {
+                //     method: 'POST',
+                //     headers: { 'Content-Type': 'application/json' },
+                //     body: JSON.stringify({ action, ...data })
+                // });
+                
+                // Имитация задержки сети
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                return { success: true };
+            } catch (error) {
+                console.error('Ошибка отправки действия:', error);
+                showNotification('Ошибка соединения');
+                return { success: false };
+            }
+        }
+        
+        function showNotification(text) {
+            const notification = document.getElementById('notification');
+            notification.textContent = text;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Обработчик клика на Оскара
+        document.getElementById('oscar').addEventListener('click', function() {
+            if (!oscarState.isSleeping) {
+                oscarState.mood = Math.min(100, oscarState.mood + 5);
+                updateUI();
+                showNotification('Оскар мурлычет от удовольствия! 😻');
+                
+                // Анимация
+                this.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                    this.style.transform = 'scale(1)';
+                }, 300);
+            }
+        });
+    </script>
+</body>
+</html>
